@@ -1,4 +1,3 @@
-import collections
 import json
 
 import h5py
@@ -7,7 +6,6 @@ import tensorflow as tf
 from tensorflow.python.eager import context
 from tensorflow.python.keras import activations
 from tensorflow.python.keras import initializers
-from tensorflow.python.keras.engine import input_spec
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import clip_ops
 from tensorflow.python.ops import init_ops
@@ -628,9 +626,6 @@ class TFLSTMCell(tf.keras.layers.Layer):
             logging.warn("%s: Note that this cell is not optimized for performance. "
                          "Please use tf.contrib.cudnn_rnn.CudnnLSTM for better "
                          "performance on GPU.", self)
-
-        # Inputs must be 2-dimensional.
-        self.input_spec = input_spec.InputSpec(ndim=2)
 
         self._num_units = num_units
         self._use_peepholes = use_peepholes
