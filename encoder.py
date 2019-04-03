@@ -112,19 +112,25 @@ def input_provider(pars, batcher, max_par_len=0, use_char_input=True):
     """
 
     :param pars: a list contain multiple sentences
-    :return:
+    :return: sentences, sentence specifier, max_sent_len, max_sent_num
     """
     sentence_num = []
     last = 0
     npas = []
     max_sent_len = 0
     max_sent_num = 0
+    sent_counter = 0
+    sentence_specifiers = []
     for par in pars:
+        ssnp = np.array([])
         sent = nltk.sent_tokenize(par)
         max_sent_len = max(max_sent_len, max(len(s) for s in sent))
         max_sent_num = max(max_sent_num, len(sent))
         sentence_num.append(len(sent))
-        batched = [batcher(s) for s in sent]
+        batched = [batcher.batch_sentences([nltk.word_tokenize(s)]) for s in sent]
+        for s in batched:
+            ssnp = np.concatenate([ssnp, np.repeat(sent_counter, s.shape[1])])
+            sent_counter += 1
         encoded_par = np.concatenate(batched, axis=1)
         if use_char_input:
             proper_sop = np.expand_dims(np.expand_dims(np.repeat(HP.sop, batcher._max_token_length), axis=0), axis=0)
@@ -135,14 +141,43 @@ def input_provider(pars, batcher, max_par_len=0, use_char_input=True):
         encoded_par = np.concatenate([proper_sop, encoded_par, proper_eop], axis=1)
         max_par_len = max(max_par_len, encoded_par.shape[1])
         npas.append(encoded_par)
+        sentence_specifiers.append(ssnp)
 
-    for npa in npas:
+    for i in range(len(npas)):
         if use_char_input:
-            proper_padding = np.repeat(axis=0, a=np.expand_dims(axis=0, a=np.repeat(0, batcher._max_token_length)),
-                                       repeats=max_par_len - npa.shape[1])
+            proper_padding = np.repeat(axis=1, a=np.expand_dims(
+                np.expand_dims(axis=0, a=np.repeat(0, batcher._max_token_length)), axis=0),
+                                       repeats=max_par_len - npas[i].shape[1])
         else:
-            proper_padding = np.repeat([[0]], axis=1, repeats=max_par_len - npa.shape[1])
-        mpa = np.concatenate([npa, proper_padding], axis=1)
+            proper_padding = np.repeat([[0]], axis=1, repeats=max_par_len - npas[i].shape[1])
+        npas[i] = np.concatenate([npas[i], proper_padding], axis=1)
+        sentence_specifiers[i] = np.expand_dims(np.concatenate(
+            [sentence_specifiers[i], np.repeat(-1, max_par_len - 2 - sentence_specifiers[i].shape[0])]), axis=0)
     ret = np.concatenate(npas, axis=0)
+    ss = np.concatenate(sentence_specifiers, axis=0)
+    return ret, ss, max_sent_len, max_sent_num
 
-    return ret, max_sent_len, max_sent_num
+
+if __name__ == '__main__':
+    # tf.enable_eager_execution()
+    batcher = Batcher(HP.vocab_file, 50)
+    q, w, e, r = input_provider(['Hi! How are you? I\'m fine. thank you'], batcher)
+    print(q.shape)
+    print(w)
+    print(e)
+    print(r)
+    encoder = Encoder()
+    # a = np.random.random(size=(2, 5, 20))
+    """
+    a = tf.placeholder(shape=[2, 5, 20], dtype=tf.int64)
+    b = tf.placeholder(shape=[2, 5], dtype=tf.int64)
+    c = tf.placeholder(shape=[2], dtype=tf.int64)
+    """
+    a = tf.placeholder(shape=[None, None, 50], dtype=tf.int64)
+    b = tf.placeholder(shape=[None, None], dtype=tf.int64)
+    c = tf.placeholder(shape=[None], dtype=tf.int64)
+    # b = np.array([[0, 0, 1, -1, -1], [2, 3, 3, 3, 4]])
+    # c = np.array([2, 3])
+    x, y = encoder(a, b, c)
+    print(x)
+    print(y)
