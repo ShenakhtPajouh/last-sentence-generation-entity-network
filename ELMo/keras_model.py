@@ -84,6 +84,8 @@ class BidirectionalLanguageModel(tf.keras.models.Model):
     def _build_ops(self, token_embeddings):
         with tf.control_dependencies([self.lm_graph.update_state_op]):
             # get the LM embeddings
+            print("token_embedding: ")
+            print(token_embeddings)
             layers = [
                 tf.concat([token_embeddings, token_embeddings], axis=2)
             ]
@@ -282,7 +284,7 @@ class BidirectionalLanguageModelGraph(tf.keras.models.Model):
             print("NOT USING SKIP CONNECTIONS")
 
         # for each direction, we'll store tensors for each layer
-        self.lstm_outputs = {'forward': [], 'backward': []}
+        self.lstm_outputs = None
         self.lstm_state_sizes = {'forward': [], 'backward': []}
         self.lstm_init_states = {'forward': [], 'backward': []}
         self.lstm_final_states = {'forward': [], 'backward': []}
@@ -332,6 +334,7 @@ class BidirectionalLanguageModelGraph(tf.keras.models.Model):
                 ])
 
     def call(self, inputs, training=None, mask=None):
+        self.lstm_outputs = {'forward': [], 'backward': []}
         embedding = None
         if self.use_character_inputs:
             with tf.device("/cpu:0"):
@@ -467,6 +470,8 @@ class Convolution(tf.keras.layers.Layer):  # done
                 strides=[1, 1, 1, 1],
                 padding="VALID") + self.b[i]
             # now max pool
+            print(self.max_chars)
+            print(width)
             conv = tf.nn.max_pool(
                 conv, [1, 1, self.max_chars - width + 1, 1],
                 [1, 1, 1, 1], 'VALID')

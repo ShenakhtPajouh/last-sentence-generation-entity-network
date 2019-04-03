@@ -5,11 +5,14 @@ import ELMo.model as model
 import ELMo.elmo as elmo
 
 
-def builder(options_file, weight_file, use_character_inputs=True, embedding_weight_file=None, max_batch_size=128,
-            name=None, session=None):
+def builder(options_file, weight_file, use_character_inputs=True, embedding_weight_file=None, max_token_length=50,
+            max_batch_size=128, name=None, session=None):
     graph = tf.Graph()
     with graph.as_default():
-        context_character_ids = tf.placeholder('int32', shape=(None, None, 50))
+        if use_character_inputs:
+            context_character_ids = tf.placeholder('int32', shape=(None, None, max_token_length))
+        else:
+            context_character_ids = tf.placeholder('int32', shape=(None, None))
         bilm = model.BidirectionalLanguageModel(options_file, weight_file, use_character_inputs=use_character_inputs,
                                                 embedding_weight_file=embedding_weight_file,
                                                 max_batch_size=max_batch_size)
@@ -25,15 +28,23 @@ def builder(options_file, weight_file, use_character_inputs=True, embedding_weig
         official_ELMo_varaibles = sess.run(gb)
 
     def _f():
-        keras_context_character_ids = tf.placeholder('int32', shape=(None, None, 50))
-        keras_bilm = keras_model.BidirectionalLanguageModel(options_file,
-                                                            use_character_inputs=use_character_inputs,
+        if use_character_inputs:
+            keras_context_character_ids = tf.placeholder('int32', shape=(None, None, max_token_length))
+        else:
+            keras_context_character_ids = tf.placeholder('int32', shape=(None, None))
+        keras_bilm = keras_model.BidirectionalLanguageModel(options_file, use_character_inputs=use_character_inputs,
                                                             embedding_weight_file=embedding_weight_file,
                                                             max_batch_size=max_batch_size, name=name)
         keras_w = keras_elmo.WeightLayer(name='input', l2_coef=0.0)
         keras_context_embeddings_op = keras_bilm(keras_context_character_ids)
+        print("output:  ")
+        print(keras_context_embeddings_op)
         keras_elmo_context_input = keras_w(keras_context_embeddings_op['lm_embeddings'],
                                            keras_context_embeddings_op['mask'])
+        print("wlayer: ")
+        print(keras_elmo_context_input)
+        print("W:")
+        print(keras_w.W.shape)
         assigns = []
         variables = []
         variables.extend(set(keras_bilm.variables))
@@ -53,6 +64,8 @@ def builder(options_file, weight_file, use_character_inputs=True, embedding_weig
     else:
         if session is None:
             session = tf.get_default_session()
+        if session is None:
+            session = tf.Session()
         with session.graph.as_default():
             keras_bilm, keras_w, assigns = _f()
         _ = session.run(assigns)

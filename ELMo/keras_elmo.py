@@ -41,6 +41,7 @@ class WeightLayer(tf.keras.layers.Layer):
     def build(self, input_shape):
         self.W = self.add_weight(name='{}_ELMo_W'.format(self.name), initializer=tf.zeros_initializer,
                                  regularizer=self._l2_regularizer, trainable=True, shape=(int(input_shape[1]),))
+
         # scale the weighted sum by gamma
         self.gamma = self.add_weight(name='{}_ELMo_gamma'.format(self.name), shape=(1,),
                                      initializer=tf.ones_initializer, regularizer=None, trainable=True)
