@@ -27,11 +27,15 @@ class Encoder(tf.keras.models.Model):
              mask=None):
         """
 
-        :param inputs: shape: [batch size, par token len] if use_character_inputs is False else [batch size,
+        :param inputs: it is from shape [batch size, par token len] if use_character_inputs is False else [batch size,
         par char len, max token length].
+        :param sentence_specifier: sentence specifier of shape [batch size, par len]
+        :param sentence_num: number of sentences for each batch. it's of shape [batch size]
+        :param max_sent_len: max len of sentences(token or character)
+        :param max_sent_num: max number of sentences in a paragraph(batch)
         :param training:
         :param mask:
-        :return: [batch_size, max_sent_num, embedding_dim]
+        :return: of shape [batch size, max number of sentences, embedding dim]
         """
         embedding_op = self.ELMo(inputs)
         encoded = self.weight_layer(embedding_op['lm_embeddings'], embedding_op['mask'])
@@ -102,3 +106,43 @@ class Encoder(tf.keras.models.Model):
                                                                       tf.TensorShape([None, max_sent_num, self.units]),
                                                                       j.get_shape(), end.get_shape()])
         return ret, ret_mask
+
+
+def input_provider(pars, batcher, max_par_len=0, use_char_input=True):
+    """
+
+    :param pars: a list contain multiple sentences
+    :return:
+    """
+    sentence_num = []
+    last = 0
+    npas = []
+    max_sent_len = 0
+    max_sent_num = 0
+    for par in pars:
+        sent = nltk.sent_tokenize(par)
+        max_sent_len = max(max_sent_len, max(len(s) for s in sent))
+        max_sent_num = max(max_sent_num, len(sent))
+        sentence_num.append(len(sent))
+        batched = [batcher(s) for s in sent]
+        encoded_par = np.concatenate(batched, axis=1)
+        if use_char_input:
+            proper_sop = np.expand_dims(np.expand_dims(np.repeat(HP.sop, batcher._max_token_length), axis=0), axis=0)
+            proper_eop = np.expand_dims(np.expand_dims(np.repeat(HP.eop, batcher._max_token_length), axis=0), axis=0)
+        else:
+            proper_sop = np.array([[batcher._lm_vocab._bop]])
+            proper_eop = np.array([[batcher._lm_vocab._eop]])
+        encoded_par = np.concatenate([proper_sop, encoded_par, proper_eop], axis=1)
+        max_par_len = max(max_par_len, encoded_par.shape[1])
+        npas.append(encoded_par)
+
+    for npa in npas:
+        if use_char_input:
+            proper_padding = np.repeat(axis=0, a=np.expand_dims(axis=0, a=np.repeat(0, batcher._max_token_length)),
+                                       repeats=max_par_len - npa.shape[1])
+        else:
+            proper_padding = np.repeat([[0]], axis=1, repeats=max_par_len - npa.shape[1])
+        mpa = np.concatenate([npa, proper_padding], axis=1)
+    ret = np.concatenate(npas, axis=0)
+
+    return ret, max_sent_len, max_sent_num
