@@ -4,6 +4,7 @@ import tensorflow as tf
 import HP
 import nltk
 from ELMo.data import Batcher, TokenBatcher
+from ELMo.keras_model import dump_token_embeddings
 
 
 class Encoder(tf.keras.models.Model):
@@ -15,7 +16,7 @@ class Encoder(tf.keras.models.Model):
         if use_character_input:
             EWF = None
         else:
-            EWF = HP.embedding_weight_file
+            EWF = HP.token_embedding_file
         self.ELMo, self.weight_layer = builder.builder(HP.option_file, HP.weight_file,
                                                        max_token_length=max_token_length,
                                                        use_character_inputs=use_character_input,
@@ -159,6 +160,10 @@ def input_provider(pars, batcher, max_par_len=0, use_char_input=True):
 
 
 if __name__ == '__main__':
+    dump_token_embeddings(
+        HP.vocab_file, HP.option_file, HP.weight_file, HP.token_embedding_file
+    )
+    tf.reset_default_graph()
     # tf.enable_eager_execution()
     batcher = Batcher(HP.vocab_file, 50)
     q, w, e, r = input_provider(['Hi! How are you? I\'m fine. thank you'], batcher)
