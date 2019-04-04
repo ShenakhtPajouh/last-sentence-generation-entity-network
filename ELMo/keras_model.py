@@ -12,6 +12,7 @@ from tensorflow.python.ops import init_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import nn_ops
 from tensorflow.python.platform import tf_logging as logging
+from .data import UnicodeCharsVocabulary, Batcher
 
 DTYPE = 'float32'
 DTYPE_INT = 'int64'
