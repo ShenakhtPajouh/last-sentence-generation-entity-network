@@ -1,3 +1,4 @@
+import collections
 import json
 
 import h5py
@@ -73,7 +74,7 @@ class BidirectionalLanguageModel(tf.keras.models.Model):
 
         else:
             # need to create the graph
-            token_embeddings = self.lm_graph(inputs=inputs)
+            token_embeddings = self.lm_graph(inputs=inputs, training=training)
             ops = self._build_ops(token_embeddings)
             self._ops[inputs] = ops
             ret = ops
@@ -83,8 +84,6 @@ class BidirectionalLanguageModel(tf.keras.models.Model):
     def _build_ops(self, token_embeddings):
         with tf.control_dependencies([self.lm_graph.update_state_op]):
             # get the LM embeddings
-            print("token_embedding: ")
-            print(token_embeddings)
             layers = [
                 tf.concat([token_embeddings, token_embeddings], axis=2)
             ]
@@ -283,7 +282,7 @@ class BidirectionalLanguageModelGraph(tf.keras.models.Model):
             print("NOT USING SKIP CONNECTIONS")
 
         # for each direction, we'll store tensors for each layer
-        self.lstm_outputs = None
+        self.lstm_outputs = {'forward': [], 'backward': []}
         self.lstm_state_sizes = {'forward': [], 'backward': []}
         self.lstm_init_states = {'forward': [], 'backward': []}
         self.lstm_final_states = {'forward': [], 'backward': []}
@@ -322,6 +321,7 @@ class BidirectionalLanguageModelGraph(tf.keras.models.Model):
                                         cell=self.lstm_cell, return_sequences=True, return_state=True))
 
     def build(self, input_shape):
+        super().build(input_shape)
         for direction in ['forward', 'backward']:
             for i in range(self.n_lstm_layers):
                 self.init_states[direction].append([
@@ -333,7 +333,6 @@ class BidirectionalLanguageModelGraph(tf.keras.models.Model):
                 ])
 
     def call(self, inputs, training=None, mask=None):
-        self.lstm_outputs = {'forward': [], 'backward': []}
         embedding = None
         if self.use_character_inputs:
             with tf.device("/cpu:0"):
@@ -431,6 +430,7 @@ class Convolution(tf.keras.layers.Layer):  # done
         self.b = None
 
     def build(self, input_shape):  # done
+        super().build(input_shape)
         self.w = []
         self.b = []
         for i, (width, num) in enumerate(self.filters):
@@ -469,8 +469,6 @@ class Convolution(tf.keras.layers.Layer):  # done
                 strides=[1, 1, 1, 1],
                 padding="VALID") + self.b[i]
             # now max pool
-            print(self.max_chars)
-            print(width)
             conv = tf.nn.max_pool(
                 conv, [1, 1, self.max_chars - width + 1, 1],
                 [1, 1, 1, 1], 'VALID')
@@ -495,6 +493,7 @@ class Projection(tf.keras.layers.Layer):
         return tf.matmul(inputs, self.W_proj_cnn) + self.b_proj_cnn
 
     def build(self, input_shape):
+        super().build(input_shape)
         self.W_proj_cnn = self.add_weight(
             name="W_proj", shape=[self.n_filters, self.projection_dim],
             initializer=tf.random_normal_initializer(
@@ -522,6 +521,7 @@ class Transformation(tf.keras.layers.Layer):
         self.b_transform = None
 
     def build(self, input_shape):
+        super().build(input_shape)
         self.W_carry = self.add_weight(
             'W_carry', [self.highway_dim, self.highway_dim],
             # glorit init
@@ -555,6 +555,7 @@ class EmbeddingLookup(tf.keras.layers.Layer):
         self.embedding_weights = None
 
     def build(self, input_shape):
+        super().build(input_shape)
         self.embedding_weights = self.add_weight(
             "char_embed", [self.n_chars, self.char_embed_dim],
             dtype=DTYPE,
@@ -627,7 +628,6 @@ class TFLSTMCell(tf.keras.layers.Layer):
             logging.warn("%s: Note that this cell is not optimized for performance. "
                          "Please use tf.contrib.cudnn_rnn.CudnnLSTM for better "
                          "performance on GPU.", self)
-
         self._num_units = num_units
         self._use_peepholes = use_peepholes
         self._cell_clip = cell_clip
@@ -659,6 +659,7 @@ class TFLSTMCell(tf.keras.layers.Layer):
             self._output_size = num_units
 
     def build(self, inputs_shape):
+        super().build(inputs_shape)
         if inputs_shape[-1] is None:
             raise ValueError("Expected inputs.shape[-1] to be known, saw shape: %s"
                              % str(inputs_shape))
@@ -771,11 +772,11 @@ class TFLSTMCell(tf.keras.layers.Layer):
 
 
 def dump_token_embeddings(vocab_file, options_file, weight_file, outfile):
-    '''
+    """
     Given an input vocabulary file, dump all the token embeddings to the
     outfile.  The result can be used as the embedding_weight_file when
     constructing a BidirectionalLanguageModel.
-    '''
+    """
     with open(options_file, 'r') as fin:
         options = json.load(fin)
     max_word_length = options['char_cnn']['max_characters_per_token']
