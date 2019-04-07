@@ -37,14 +37,8 @@ def builder(options_file, weight_file, use_character_inputs=True, embedding_weig
                                                             max_batch_size=max_batch_size, name=name)
         keras_w = keras_elmo.WeightLayer(name='input', l2_coef=0.0)
         keras_context_embeddings_op = keras_bilm(keras_context_character_ids)
-        print("output:  ")
-        print(keras_context_embeddings_op)
         keras_elmo_context_input = keras_w(keras_context_embeddings_op['lm_embeddings'],
                                            keras_context_embeddings_op['mask'])
-        print("wlayer: ")
-        print(keras_elmo_context_input)
-        print("W:")
-        print(keras_w.W.shape)
         assigns = []
         variables = []
         variables.extend(set(keras_bilm.variables))

@@ -27,7 +27,6 @@ class Encoder(tf.keras.models.Model):
     def call(self, inputs, sentence_specifier, sentence_num, max_sent_len=100, max_sent_num=20, training=None,
              mask=None):
         """
-
         :param inputs: it is from shape [batch size, par token len] if use_character_inputs is False else [batch size,
         par char len, max token length].
         :param sentence_specifier: sentence specifier of shape [batch size, par len]
@@ -39,6 +38,8 @@ class Encoder(tf.keras.models.Model):
         :return: of shape [batch size, max number of sentences, embedding dim]
         """
         embedding_op = self.ELMo(inputs)
+        print("shape:")
+        print(embedding_op)
         encoded = self.weight_layer(embedding_op['lm_embeddings'], embedding_op['mask'])
         end = tf.reduce_max(sentence_specifier)
         i = tf.constant(1, dtype=tf.int64)
@@ -111,7 +112,6 @@ class Encoder(tf.keras.models.Model):
 
 def input_provider(pars, batcher, max_par_len=0, use_char_input=True):
     """
-
     :param pars: a list contain multiple sentences
     :return: sentences, sentence specifier, max_sent_len, max_sent_num
     """
