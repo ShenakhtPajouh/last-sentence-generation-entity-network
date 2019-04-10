@@ -5,6 +5,7 @@ import HP
 import nltk
 from ELMo.data import Batcher, TokenBatcher
 from ELMo.keras_model import dump_token_embeddings
+from encoder_cell import encoder_cell, get_ELMo_initial_state
 
 
 class Encoder(tf.keras.models.Model):
@@ -141,10 +142,10 @@ def input_provider(pars, batcher, max_sent_num, use_char_input=True):
 
 
 if __name__ == '__main__':
-    dump_token_embeddings(
-        HP.vocab_file, HP.option_file, HP.weight_file, HP.token_embedding_file
-    )
-    tf.reset_default_graph()
+    # dump_token_embeddings(
+    #     HP.vocab_file, HP.option_file, HP.weight_file, HP.token_embedding_file
+    # )
+    # tf.reset_default_graph()
 
     batcher = TokenBatcher(HP.vocab_file)
     inputs, specifier, rnn_mask, indices, sent_mask, end_of_sentences = input_provider(
@@ -165,7 +166,8 @@ if __name__ == '__main__':
     indices_placeholder = tf.placeholder(shape=[None, 2], dtype=tf.int64)
     end_c_p = tf.placeholder(shape=[None, 2], dtype=tf.int64)
     encoded = encoder(inp, ss, end_c_p, indices_placeholder, max_sent_num=3)
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        x_ = sess.run(encoded, feed_dict={inp: inputs, ss: specifier, end_c_p: end_of_sentences,
-                                          indices_placeholder: indices})
+    print(get_ELMo_initial_state(encoder.ELMo.lm_graph, tf.shape(inp)[0]))
+    # with tf.Session() as sess:
+    #     sess.run(tf.global_variables_initializer())
+    #     x_ = sess.run(encoded, feed_dict={inp: inputs, ss: specifier, end_c_p: end_of_sentences,
+    #                                       indices_placeholder: indices})

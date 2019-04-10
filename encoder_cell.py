@@ -11,7 +11,7 @@ def encoder_cell(encoder, ELMo_states, encoder_state, id):
         ELMo_output_states.append(state)
     output, encoder_state = encoder_cell(inputs, encoder_state)
 
-    return output, encoder_state
+    return output, ELMo_output_states, encoder_state
 
 
 def get_ELMo_initial_state(lm_graph, batch_size):
