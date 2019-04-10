@@ -22,7 +22,8 @@ class Encoder(tf.keras.models.Model):
                                                        use_character_inputs=use_character_input,
                                                        embedding_weight_file=EWF,
                                                        max_batch_size=max_batch_size)
-        self.rnn = tf.keras.layers.GRU(units=units, return_sequences=True)
+        self.cell = tf.keras.layers.GRUCell(units=units)
+        self.rnn = tf.keras.layers.RNN(cell=self.cell, return_sequences=True)
 
     def call(self, inputs, sentence_specifier, end_sentence_specifier, indices, max_sent_num=20, training=None,
              mask=None):
@@ -91,7 +92,7 @@ def input_provider(pars, batcher, max_sent_num, use_char_input=True):
         sent_counter = 0
         for s in batched:
             max_sent_len = max(max_sent_len, np.shape(s)[1])
-            end_of_sentences.append(np.expand_dims(np.array([total_sent_counter, np.shape(s)[1]]), axis=0))
+            end_of_sentences.append(np.expand_dims(np.array([total_sent_counter, np.shape(s)[1] - 1]), axis=0))
             indices.append(np.array([i, sent_counter]))
             sentence_specifiers.append(
                 np.concatenate(
