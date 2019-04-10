@@ -28,7 +28,7 @@ class Encoder(tf.keras.models.Model):
              mask=None):
         """
 
-        :param inputs:
+        :param inputs: of shape [
         :param sentence_specifier:
         :param end_sentence_specifier:
         :param indices:
@@ -53,11 +53,24 @@ class Encoder(tf.keras.models.Model):
 def input_provider(pars, batcher, max_sent_num, use_char_input=True):
     """
 
-    :param pars:
-    :param batcher:
-    :param max_sent_num:
-    :param use_char_input:
+    :param pars: array of paragraphs.
+    :param batcher: instance of Batcher of TokenBatcher.
+    :param max_sent_num: maximum number of sentences.
+    :param use_char_input: use char input or token id input.
     :return:
+        ret: the input of Encoder. if use_char_input it's from shape [batch size, max paragraph character len, max token
+         length of Batcher]; otherwise from shape [batch size, max paragraph token len]. it concatenate all sentence of
+         a paragraph.
+        ss: sentence specifier for passing to Encoder as sentence_specifier parameter. it's from shape
+         [number of all sentences in batch, max len of sentences, 2]. for each sentence it keeps positions of its tokens
+         in ret.
+        rnn_mask: mask that passing to RNN of Encoder. it is from shape [number of all sentences, max len of sentences]
+        indices: it contains positions of sentences in output of Encoder. for example if it's i's element is [j, k],
+         then the i's sentence of batch is the k's sentence of j's paragraph.
+        sent_mask: mask of sentences of pars. it's from shape [batch size, max sent num]
+        end_of_sentences: contains end id of each sentences. it should pass to Encoder as end_sentence_specifier. shape:
+         [batch size, 2] ===> for example-> end_of_sentences = [[0 5] [1, 2] [2, 6]] means that first sentence's last
+         token is its fifth, for second sentences it's second and for last sentence is sixth token.
     """
     sentence_num = []
     npas = []
@@ -69,7 +82,6 @@ def input_provider(pars, batcher, max_sent_num, use_char_input=True):
     sent_mask = []
     end_of_sentences = []
     total_sent_counter = 0
-    print("batcher", batcher)
     for i in range(len(pars)):
         par = pars[i]
         sent = nltk.sent_tokenize(par)
@@ -79,7 +91,7 @@ def input_provider(pars, batcher, max_sent_num, use_char_input=True):
         sent_counter = 0
         for s in batched:
             max_sent_len = max(max_sent_len, np.shape(s)[1])
-            end_of_sentences.append(np.expand_dims(np.array([total_sent_counter, len(s) - 1]), axis=0))
+            end_of_sentences.append(np.expand_dims(np.array([total_sent_counter, np.shape(s)[1]]), axis=0))
             indices.append(np.array([i, sent_counter]))
             sentence_specifiers.append(
                 np.concatenate(
@@ -133,10 +145,9 @@ if __name__ == '__main__':
     )
     tf.reset_default_graph()
 
-    tf.enable_eager_execution()
     batcher = TokenBatcher(HP.vocab_file)
     inputs, specifier, rnn_mask, indices, sent_mask, end_of_sentences = input_provider(
-        ['Pretrained biLMs compute representations useful for NLP tasks .',
+        ['Pretrained biLMs compute representations useful for NLP tasks . it\'s amazing .',
          'They give state of the art performance for many tasks .'], batcher, max_sent_num=3, use_char_input=False)
     print(inputs)
     print(inputs.shape)
@@ -156,5 +167,4 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         x_ = sess.run(encoded, feed_dict={inp: inputs, ss: specifier, end_c_p: end_of_sentences,
-                                             indices_placeholder: indices})
-
+                                          indices_placeholder: indices})
