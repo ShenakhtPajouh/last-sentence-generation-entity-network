@@ -27,7 +27,7 @@ class Encoder(tf.keras.models.Model):
         self.rnn = tf.keras.layers.RNN(cell=self.cell, return_sequences=True)
 
     def call(self, inputs, sentence_specifier, end_sentence_specifier, indices, max_sent_num=20, training=None,
-             mask=None):
+             mask=None, get_embedding=False):
         """
 
         :param inputs: of shape [
@@ -43,6 +43,8 @@ class Encoder(tf.keras.models.Model):
         encoded = self.weight_layer(embedding_op['lm_embeddings'], embedding_op['mask'])
         # i = tf.constant(1, dtype=tf.int64)
         pars = tf.gather_nd(encoded, sentence_specifier)
+        if get_embedding:
+            return self.ELMo.lm_graph.pre_process
         embeddings = self.rnn(inputs=pars)
 
         sents = tf.gather_nd(embeddings, end_sentence_specifier)
@@ -165,9 +167,10 @@ if __name__ == '__main__':
     # rnn_mask_placeholder = tf.placeholder(shape=[None], dtype=tf.int64)
     indices_placeholder = tf.placeholder(shape=[None, 2], dtype=tf.int64)
     end_c_p = tf.placeholder(shape=[None, 2], dtype=tf.int64)
-    encoded = encoder(inp, ss, end_c_p, indices_placeholder, max_sent_num=3)
+    encoded = encoder(inp, ss, end_c_p, indices_placeholder, max_sent_num=3, get_embedding=True)
     print(get_ELMo_initial_state(encoder.ELMo.lm_graph, tf.shape(inp)[0]))
-    # with tf.Session() as sess:
-    #     sess.run(tf.global_variables_initializer())
-    #     x_ = sess.run(encoded, feed_dict={inp: inputs, ss: specifier, end_c_p: end_of_sentences,
-    #                                       indices_placeholder: indices})
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        x_ = sess.run(encoded, feed_dict={inp: inputs, ss: specifier, end_c_p: end_of_sentences,
+                                          indices_placeholder: indices})
+    print(x_.shape)

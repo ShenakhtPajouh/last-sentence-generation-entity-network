@@ -166,6 +166,7 @@ class BidirectionalLanguageModelGraph(tf.keras.models.Model):
         self.embedding = None
         self.mask = None
         self.sequence_lengths = None
+        self.pre_process = None
 
         if embedding_weight_file is not None:
             # get the vocab size
@@ -417,6 +418,8 @@ class BidirectionalLanguageModelGraph(tf.keras.models.Model):
         else:
             with tf.device("/cpu:0"):
                 embedding = self.EmbeddingLookup(inputs)
+
+        self.pre_process = embedding
 
         return embedding
 
